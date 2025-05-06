@@ -46,7 +46,8 @@ exports.saveBudgetTransaction = async (req, res) => {
             remainingAmount,
             dueDate,
             reason,
-            originalPaymentId
+            originalPaymentId,
+            isAdminOverride
         } = req.body;
 
         // Validate required fields
@@ -69,41 +70,54 @@ exports.saveBudgetTransaction = async (req, res) => {
 
         // Additional validation for refunds
         if (type === 'refund') {
-            if (!reason || !originalPaymentId) {
+            if (!reason) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Refunds require reason and original payment ID'
+                    message: 'Refunds require a reason'
                 });
             }
 
-            // Check if original payment exists
-            const originalPayment = await BudgetTransaction.findById(originalPaymentId);
-            if (!originalPayment || originalPayment.type !== 'payment') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid original payment'
-                });
-            }
+            // Skip original payment validation for admin overrides
+            if (!isAdminOverride) {
+                // Require originalPaymentId for non-admin-override refunds
+                if (!originalPaymentId) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Refunds require original payment ID'
+                    });
+                }
 
-            // Check if refund already exists
-            const existingRefund = await BudgetTransaction.findOne({
-                type: 'refund',
-                originalPaymentId: mongoose.Types.ObjectId(originalPaymentId)
-            });
+                // Check if original payment exists
+                const originalPayment = await BudgetTransaction.findById(originalPaymentId);
+                if (!originalPayment || originalPayment.type !== 'payment') {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid original payment'
+                    });
+                }
 
-            if (existingRefund) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'A refund has already been processed for this payment'
+                // Check if refund already exists
+                const existingRefund = await BudgetTransaction.findOne({
+                    type: 'refund',
+                    originalPaymentId: mongoose.Types.ObjectId(originalPaymentId)
                 });
-            }
 
-            // Validate refund amount
-            if (amount > originalPayment.amount) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Refund amount cannot exceed original payment amount'
-                });
+                if (existingRefund) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'A refund has already been processed for this payment'
+                    });
+                }
+
+                // Validate refund amount
+                if (amount > originalPayment.amount) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Refund amount cannot exceed original payment amount'
+                    });
+                }
+            } else {
+                console.log('Processing admin override refund, skipping payment validation');
             }
         }
 
@@ -120,7 +134,8 @@ exports.saveBudgetTransaction = async (req, res) => {
             remainingAmount: status === 'partial' ? remainingAmount : 0,
             dueDate: status === 'partial' ? new Date(dueDate) : undefined,
             reason,
-            originalPaymentId: type === 'refund' ? originalPaymentId : undefined,
+            originalPaymentId: type === 'refund' && !isAdminOverride ? originalPaymentId : undefined,
+            isAdminOverride: isAdminOverride || false,
             date: req.body.date ? new Date(req.body.date) : new Date()
         });
 
