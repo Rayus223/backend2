@@ -199,6 +199,64 @@ router.post('/login', login);
 router.get('/check-registration', checkRegistration);
 router.post('/reset-password', resetPasswordRequest);
 
+// Add verify-token endpoint
+router.get('/verify-token', async (req, res) => {
+  try {
+    // Get token from authorization header
+    const authHeader = req.header('Authorization');
+    if (!authHeader) {
+      return res.status(401).json({
+        success: false,
+        message: 'No authorization header found'
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No token provided'
+      });
+    }
+
+    // Verify the token
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (!decoded.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token format'
+      });
+    }
+
+    // Find the teacher by ID
+    const teacher = await Teacher.findById(decoded.id);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Valid token',
+      teacher: {
+        id: teacher._id,
+        email: teacher.email,
+        fullName: teacher.fullName
+      }
+    });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Invalid or expired token'
+    });
+  }
+});
+
 // Token refresh endpoint
 router.post('/refresh-token', async (req, res) => {
   try {
@@ -258,7 +316,7 @@ router.post('/refresh-token', async (req, res) => {
         role: 'teacher'
       },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' } // 24-hour expiration
+      { expiresIn: '365d' } // 365-day expiration instead of 24 hours
     );
 
     res.status(200).json({
