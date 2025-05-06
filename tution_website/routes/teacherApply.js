@@ -404,12 +404,27 @@ router.post('/apply-vacancy/:id', authMiddleware, async (req, res) => {
             });
         }
 
-        // Check if already applied
-        const alreadyApplied = vacancy.applications.some(
-            app => app.teacher.toString() === currentTeacherId
-        );
+        // Improved check for already applied - Convert both IDs to strings for proper comparison
+        const alreadyApplied = vacancy.applications.some(app => {
+            // Convert ObjectId to string to ensure consistent comparison
+            const appTeacherId = app.teacher instanceof mongoose.Types.ObjectId 
+                ? app.teacher.toString() 
+                : String(app.teacher);
+            
+            console.log('Comparing teacher IDs:', { 
+                applicationTeacherId: appTeacherId,
+                currentTeacherId,
+                isMatch: appTeacherId === currentTeacherId
+            });
+            
+            return appTeacherId === currentTeacherId;
+        });
 
         if (alreadyApplied) {
+            console.log('Teacher already applied to this vacancy:', {
+                teacherId: currentTeacherId,
+                vacancyId
+            });
             return res.status(400).json({
                 success: false,
                 message: 'You have already applied for this vacancy'
