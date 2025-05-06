@@ -31,7 +31,7 @@ cloudinary.config({
 
 // Define allowed file types
 const ALLOWED_TYPES = {
-    'cv': ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    'cv': ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/jpg', 'image/png'],
     'certificates': ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png']
 };
 
@@ -137,8 +137,11 @@ router.post('/signup',
 
       try {
         // Upload CV to Cloudinary
-        const cvResult = await cloudinary.uploader.upload(req.files.cv[0].path, {
-          resource_type: 'raw',
+        const cvFile = req.files.cv[0];
+        const isImageCV = ['image/jpeg', 'image/jpg', 'image/png'].includes(cvFile.mimetype);
+        
+        const cvResult = await cloudinary.uploader.upload(cvFile.path, {
+          resource_type: isImageCV ? 'image' : 'raw',
           folder: 'teacher_cvs',
           timeout: 120000 // Increased timeout to 120 seconds
         });
@@ -147,8 +150,10 @@ router.post('/signup',
         const certificateUrls = [];
         if (req.files.certificates) {
           for (const cert of req.files.certificates) {
+            const isImageCert = ['image/jpeg', 'image/jpg', 'image/png'].includes(cert.mimetype);
+            
             const certResult = await cloudinary.uploader.upload(cert.path, {
-              resource_type: 'raw',
+              resource_type: isImageCert ? 'image' : 'raw',
               folder: 'teacher_certificates',
               timeout: 120000 // Increased timeout here too
             });
