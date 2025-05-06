@@ -283,10 +283,6 @@ router.get('/available-vacancies', authMiddleware, async (req, res) => {
 
     const vacancies = await Vacancy.find({ 
       status: 'open',
-      // Only get vacancies with less than 5 applications
-      $expr: { 
-        $lt: [{ $size: '$applications' }, 5]
-      },
       // Exclude vacancies where the current teacher has already applied
       'applications': {
         $not: {
@@ -359,14 +355,6 @@ router.post('/apply-vacancy/:id', authMiddleware, async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'You have already applied for this vacancy'
-            });
-        }
-
-        // Check if vacancy has less than 5 applications
-        if (vacancy.applications.length >= 5) {
-            return res.status(400).json({
-                success: false,
-                message: 'This vacancy has reached maximum applications'
             });
         }
 
