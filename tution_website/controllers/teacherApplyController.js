@@ -75,7 +75,7 @@ exports.signup = async (req, res) => {
         const token = jwt.sign(
             { id: teacher._id },
             process.env.JWT_SECRET,
-            { expiresIn: '30d' }
+            { expiresIn: '365d' }
         );
 
         res.status(200).json({
@@ -146,7 +146,7 @@ exports.login = async (req, res) => {
         const token = jwt.sign(
             { id: teacher._id, role: teacher.role },
             process.env.JWT_SECRET,
-            { expiresIn: '1d' }
+            { expiresIn: '365d' }
         );
 
         res.json({
