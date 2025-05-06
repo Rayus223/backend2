@@ -405,11 +405,7 @@ router.put('/:vacancyId/applications/:applicationId/status', adminAuth, async (r
 router.get('/available-vacancies', async (req, res) => {
     try {
         const vacancies = await Vacancy.find({ 
-            status: 'open',
-            // Only get vacancies with less than 5 applications
-            $expr: { 
-                $lt: [{ $size: "$applications" }, 5]
-            }
+            status: 'open'
         })
         .select('title subject description requirements salary applications status')
         .lean();
@@ -455,14 +451,6 @@ router.post('/apply-vacancy/:id', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'You have already applied for this vacancy'
-            });
-        }
-
-        // Check if vacancy has less than 5 applications
-        if (vacancy.applications.length >= 5) {
-            return res.status(400).json({
-                success: false,
-                message: 'This vacancy has reached maximum applications'
             });
         }
 
