@@ -47,7 +47,7 @@ router.post('/login', async (req, res) => {
         const token = jwt.sign(
             { id: admin._id, role: admin.role },
             process.env.JWT_SECRET,
-            { expiresIn: '1d' }
+            { expiresIn: '365d' }
         );
 
         console.log('Login successful for:', username);
@@ -150,6 +150,138 @@ router.put('/teacher/:id/status', adminAuth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error updating teacher status'
+        });
+    }
+});
+
+// Add verify-token endpoint
+router.get('/verify-token', async (req, res) => {
+    try {
+        // Get token from authorization header
+        const authHeader = req.header('Authorization');
+        if (!authHeader) {
+            return res.status(401).json({
+                success: false,
+                message: 'No authorization header found'
+            });
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                message: 'No token provided'
+            });
+        }
+
+        // Verify the token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        if (!decoded.id) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid token format'
+            });
+        }
+
+        // Find the admin by ID
+        const admin = await Admin.findById(decoded.id);
+        if (!admin) {
+            return res.status(404).json({
+                success: false,
+                message: 'Admin not found'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Valid token',
+            admin: {
+                id: admin._id,
+                username: admin.username,
+                email: admin.email,
+                role: admin.role
+            }
+        });
+    } catch (error) {
+        console.error('Token verification error:', error);
+        res.status(401).json({
+            success: false,
+            message: 'Invalid or expired token'
+        });
+    }
+});
+
+// Add admin refresh token endpoint
+router.post('/refresh-token', async (req, res) => {
+    try {
+        // Get the old token from the authorization header
+        const authHeader = req.header('Authorization');
+        if (!authHeader) {
+            return res.status(401).json({
+                success: false,
+                message: 'No authorization header found'
+            });
+        }
+
+        const oldToken = authHeader.replace('Bearer ', '');
+        if (!oldToken) {
+            return res.status(401).json({
+                success: false,
+                message: 'No token provided'
+            });
+        }
+
+        // Try to decode the expired token to get the user ID
+        let decoded;
+        try {
+            // Verify without checking expiration
+            decoded = jwt.verify(oldToken, process.env.JWT_SECRET, { ignoreExpiration: true });
+            
+            if (!decoded.id) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Invalid token format'
+                });
+            }
+        } catch (error) {
+            console.error('Token verification failed:', error);
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid token'
+            });
+        }
+
+        // Find the admin by ID
+        const admin = await Admin.findById(decoded.id);
+        if (!admin) {
+            return res.status(404).json({
+                success: false,
+                message: 'Admin not found'
+            });
+        }
+
+        // Create a new token
+        const newToken = jwt.sign(
+            { 
+                id: admin._id, 
+                username: admin.username,
+                role: admin.role
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '365d' }
+        );
+
+        res.status(200).json({
+            success: true,
+            message: 'Token refreshed successfully',
+            token: newToken
+        });
+    } catch (error) {
+        console.error('Error refreshing token:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error refreshing token'
         });
     }
 });
