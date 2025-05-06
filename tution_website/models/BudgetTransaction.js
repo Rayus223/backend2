@@ -66,8 +66,12 @@ const budgetTransactionSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'BudgetTransaction',
         required: function() {
-            return this.type === 'refund';
+            return this.type === 'refund' && !this.isAdminOverride;
         }
+    },
+    isAdminOverride: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true
